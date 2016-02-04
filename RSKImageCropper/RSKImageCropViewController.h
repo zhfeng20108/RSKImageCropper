@@ -37,6 +37,14 @@ typedef NS_ENUM(NSUInteger, RSKImageCropMode) {
     RSKImageCropModeSquare,
     RSKImageCropModeCustom
 };
+/**
+ types of supported cancel modes
+ */
+typedef NS_ENUM(NSUInteger, RSKCancelMode) {
+    RSKCancelModeCancel,
+    RSKCancelModeReelect,
+    RSKCancelModeRephotograph
+};
 
 @interface RSKImageCropViewController : UIViewController
 
@@ -161,6 +169,10 @@ typedef NS_ENUM(NSUInteger, RSKImageCropMode) {
  @discussion To support the rotation when `cropMode` is `RSKImageCropModeCustom` you must implement the data source method `imageCropViewControllerCustomMovementRect:`.
  */
 @property (assign, getter=isRotationEnabled, nonatomic) BOOL rotationEnabled;
+
+@property (nonatomic, assign) BOOL statusBarHidden;
+@property (nonatomic, assign) BOOL navigationBarHidden;
+@property (nonatomic, assign) RSKCancelMode cancelMode;
 
 /// -------------------------------
 /// @name Accessing the UI Elements
