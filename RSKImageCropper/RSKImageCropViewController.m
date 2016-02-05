@@ -69,10 +69,16 @@ static const CGFloat kLayoutImageScrollViewAnimationDuration = 0.25;
 @property (strong, nonatomic) NSLayoutConstraint *chooseButtonBottomConstraint;
 @property (strong, nonatomic) NSLayoutConstraint *chooseButtonTrailingConstraint;
 
+@property (nonatomic, assign) PHImageRequestID lastRequestID;
 @end
 
 @implementation RSKImageCropViewController
-
+- (void)dealloc
+{
+    if ([[[UIDevice currentDevice] systemVersion] compare:@"8.0" options:NSNumericSearch] != NSOrderedAscending) {
+        [[PHCachingImageManager defaultManager] cancelImageRequest:self.lastRequestID];
+    }
+}
 #pragma mark - Lifecycle
 
 - (instancetype)init
@@ -119,6 +125,85 @@ static const CGFloat kLayoutImageScrollViewAnimationDuration = 0.25;
     }
     return self;
 }
+
+- (instancetype)initWithAsset:(id)asset
+{
+    self = [self init];
+    if (self) {
+        __weak typeof(self) wself = self;
+        if ([[[UIDevice currentDevice] systemVersion] compare:@"8.0" options:NSNumericSearch] != NSOrderedAscending) {
+            __block BOOL finished = NO;
+            [[PHCachingImageManager defaultManager] cancelImageRequest:self.lastRequestID];
+            [wself.imageScrollView rsk_noticeSyncDone];
+            PHAsset *phAsset = asset;
+            CGSize targetSize = CGSizeMake(phAsset.pixelWidth, phAsset.pixelHeight);
+            //缓存图
+            PHImageRequestOptions *requestOptions = [[PHImageRequestOptions alloc] init];
+            requestOptions.networkAccessAllowed = YES;
+            requestOptions.resizeMode = PHImageRequestOptionsResizeModeExact;
+            requestOptions.deliveryMode = PHImageRequestOptionsDeliveryModeHighQualityFormat;
+            requestOptions.progressHandler = ^(double progress, NSError *error, BOOL *stop, NSDictionary *info) {
+                if (!finished) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        [wself.imageScrollView rsk_noticeSyncWithProgress:progress];
+                        [wself.chooseButton setEnabled:NO];
+                    });
+                }
+            };
+            self.lastRequestID =
+            [[PHCachingImageManager defaultManager]
+             requestImageForAsset:phAsset
+             targetSize:targetSize
+             contentMode:PHImageContentModeAspectFit
+             options:requestOptions
+             resultHandler:^(UIImage *result, NSDictionary *info) {
+                 if ([[info valueForKey:PHImageResultRequestIDKey] integerValue] == wself.lastRequestID) {
+                     finished = YES;
+                     [wself.imageScrollView rsk_noticeSyncDone];//同步完成，修改UI显示
+                     [wself.chooseButton setEnabled:YES];
+                     wself.originalImage = result;
+                 }
+                 
+             }];
+        } else {
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                @autoreleasepool {
+                    ALAssetsLibrary *assetslibrary = [[ALAssetsLibrary alloc] init];
+                    [assetslibrary assetForURL:[[(ALAsset *)asset defaultRepresentation] url]
+                                   resultBlock:^(ALAsset *resultAsset){
+                                       ALAssetRepresentation *assetRepresentation = [resultAsset defaultRepresentation];
+                                       CGImageRef iref = nil;
+                                       if([assetRepresentation size] > 5*1024*1024) {
+                                           iref  = [[resultAsset defaultRepresentation] fullScreenImage];
+                                       } else {
+                                           iref = [assetRepresentation fullResolutionImage];
+                                       }
+                                       if (iref) {
+                                           UIImage *imageTest = [UIImage imageWithCGImage:iref];
+                                           imageTest = [imageTest fixOrientation];
+                                           dispatch_async(dispatch_get_main_queue(), ^{
+                                               wself.originalImage=imageTest;
+                                           });
+                                       }
+                                   }
+                                  failureBlock:^(NSError *error) {
+                                  }];
+                }
+            });
+        }
+    }
+    return self;
+}
+
+- (instancetype)initWithAsset:(id)asset cropMode:(RSKImageCropMode)cropMode
+{
+    self = [self initWithAsset:asset];
+    if (self) {
+        _cropMode = cropMode;
+    }
+    return self;
+}
+
 
 - (BOOL)prefersStatusBarHidden
 {

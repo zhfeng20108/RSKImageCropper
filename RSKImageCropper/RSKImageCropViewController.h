@@ -23,7 +23,8 @@
 //
 
 #import <UIKit/UIKit.h>
-
+#import <Photos/Photos.h>
+#import <AssetsLibrary/AssetsLibrary.h>
 NS_ASSUME_NONNULL_BEGIN
 
 @protocol RSKImageCropViewControllerDataSource;
@@ -63,6 +64,9 @@ typedef NS_ENUM(NSUInteger, RSKCancelMode) {
  */
 - (instancetype)initWithImage:(UIImage *)originalImage cropMode:(RSKImageCropMode)cropMode;
 
+/// ALAsset or PHAsset
+- (instancetype)initWithAsset:(id)asset;
+- (instancetype)initWithAsset:(id)asset cropMode:(RSKImageCropMode)cropMode;
 ///-----------------------------
 /// @name Accessing the Delegate
 ///-----------------------------

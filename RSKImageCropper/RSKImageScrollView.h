@@ -54,4 +54,8 @@
 
 - (void)displayImage:(UIImage *)image;
 
+- (void)rsk_noticeSyncWithProgress:(double)progress;
+
+- (void)rsk_noticeSyncDone;
+
 @end

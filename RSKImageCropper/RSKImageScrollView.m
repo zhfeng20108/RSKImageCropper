@@ -49,6 +49,115 @@
 
 #import "RSKImageScrollView.h"
 
+#pragma mark - RSKiCloudSyncingView
+
+@interface RSKiCloudSyncingView : UIView
+
+@property (nonatomic, assign) float progress;
+-(void)showInView:(UIView *)superview;
+
+@end
+
+@interface RSKiCloudSyncingView ()
+@property (nonatomic, strong) UIImageView *imageView;
+@property (nonatomic, strong) UILabel *textLabel;
+@end
+@implementation RSKiCloudSyncingView
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        self.backgroundColor = [UIColor colorWithRed:102.0/255 green:102.0/255 blue:102.0/255 alpha:0.0];
+        
+        [self addSubview:self.imageView];
+        [self addSubview:self.textLabel];
+        
+        NSDictionary *dict = NSDictionaryOfVariableBindings(_imageView,_textLabel);
+        NSDictionary *metrics = nil;
+        
+        //self.imageView的约束
+        [self addConstraint:[NSLayoutConstraint constraintWithItem:self.imageView attribute:NSLayoutAttributeBottom relatedBy:NSLayoutRelationEqual
+                                                            toItem:self attribute:NSLayoutAttributeCenterY multiplier:1.0f
+                                                          constant:-5]];
+        [self addConstraint:[NSLayoutConstraint constraintWithItem:self.imageView attribute:NSLayoutAttributeCenterX relatedBy:NSLayoutRelationEqual
+                                                            toItem:self attribute:NSLayoutAttributeCenterX multiplier:1.0f
+                                                          constant:0]];
+        //self.textLabel的约束
+        [self addConstraint:[NSLayoutConstraint constraintWithItem:self.textLabel attribute:NSLayoutAttributeCenterX relatedBy:NSLayoutRelationEqual
+                                                            toItem:self attribute:NSLayoutAttributeCenterX multiplier:1.0f
+                                                          constant:0]];
+        [self addConstraint:[NSLayoutConstraint constraintWithItem:self.textLabel attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual
+                                                            toItem:self.imageView attribute:NSLayoutAttributeBottom multiplier:1.0f
+                                                          constant:10]];
+    }
+    return self;
+}
+
+- (UIImageView *)imageView
+{
+    if (!_imageView) {
+        _imageView = [[UIImageView alloc] init];
+        _imageView.translatesAutoresizingMaskIntoConstraints = NO;
+    }
+    return _imageView;
+}
+
+- (UILabel *)textLabel
+{
+    if (!_textLabel) {
+        _textLabel = [[UILabel alloc]init];
+        _textLabel.numberOfLines=2;
+        _textLabel.textAlignment = NSTextAlignmentCenter;
+        _textLabel.backgroundColor = [UIColor clearColor];
+        _textLabel.font = [UIFont boldSystemFontOfSize:14];
+        _textLabel.textColor = [UIColor whiteColor];
+        _textLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        [self addSubview:_textLabel];
+    }
+    return _textLabel;
+}
+
+
+-(void)showInView:(UIView *)superview
+{
+    if (superview) {
+        [superview addSubview:self];
+        self.translatesAutoresizingMaskIntoConstraints = NO;
+        [superview addConstraint:[NSLayoutConstraint constraintWithItem:self attribute:NSLayoutAttributeLeading relatedBy:NSLayoutRelationEqual
+                                                                 toItem:superview attribute:NSLayoutAttributeLeading multiplier:1.0f
+                                                               constant:0]];
+        [superview addConstraint:[NSLayoutConstraint constraintWithItem:self attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual
+                                                                 toItem:superview attribute:NSLayoutAttributeTop multiplier:1.0f
+                                                               constant:0]];
+        [superview addConstraint:[NSLayoutConstraint constraintWithItem:self attribute:NSLayoutAttributeWidth relatedBy:NSLayoutRelationEqual
+                                                                 toItem:superview attribute:NSLayoutAttributeWidth multiplier:1.0f
+                                                               constant:0]];
+        [superview addConstraint:[NSLayoutConstraint constraintWithItem:self attribute:NSLayoutAttributeHeight relatedBy:NSLayoutRelationEqual
+                                                                 toItem:superview attribute:NSLayoutAttributeHeight multiplier:1.0f
+                                                               constant:0]];
+        
+        UIImage *image=[UIImage imageNamed:@"RSKImageCropperStrings.bundle/images/iCloud"];
+        self.imageView.image=image;
+        //初始化进度
+        [self setProgress:0.0f];
+    }
+}
+
+- (void)setProgress:(float)progress
+{
+    _progress = progress;
+    NSString *message = [NSString stringWithFormat:@"iCloud\n同步中%.0f%%",progress*100];
+    NSMutableAttributedString * attributedString = [[NSMutableAttributedString alloc] initWithString:message];
+    NSMutableParagraphStyle * paragraphStyle = [[NSMutableParagraphStyle alloc] init];
+    [paragraphStyle setLineSpacing:5];
+    paragraphStyle.alignment = NSTextAlignmentCenter;
+    [attributedString addAttribute:NSParagraphStyleAttributeName value:paragraphStyle range:NSMakeRange(0, [message length])];
+    [self.textLabel setAttributedText:attributedString];
+}
+
+@end
+
 #pragma mark -
 
 @interface RSKImageScrollView () <UIScrollViewDelegate>
@@ -116,6 +225,27 @@
     }
     
     [self centerZoomView];
+}
+
+#pragma mark - iCloud
+
+- (void)rsk_noticeSyncWithProgress:(double)progress
+{
+    RSKiCloudSyncingView *iCloudSyncingView = (RSKiCloudSyncingView *)[self viewWithTag:765];
+    if (!iCloudSyncingView) {
+        iCloudSyncingView = [[RSKiCloudSyncingView alloc] init];
+        iCloudSyncingView.tag = 765;
+        [iCloudSyncingView showInView:self];
+    } else {
+        [self bringSubviewToFront:iCloudSyncingView];
+    }
+    [iCloudSyncingView setProgress:progress];
+    
+}
+
+- (void)rsk_noticeSyncDone
+{
+    [[self viewWithTag:765] removeFromSuperview];
 }
 
 #pragma mark - UIScrollViewDelegate
